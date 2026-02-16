@@ -1,0 +1,5 @@
+ipl.db
+IPL.csv
+.env
+venv/
+__pycache__/

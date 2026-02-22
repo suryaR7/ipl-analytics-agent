@@ -17,3 +17,8 @@ data/*.csv
 # Mac
 .DS_Store
 IPL.csv
+
+.env
+.env.example
+IPL.csv
+

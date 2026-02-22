@@ -1,32 +1,35 @@
-import sqlite3
 import pandas as pd
-
+import sqlite3
 DB_NAME = "ipl.db"
-TABLE_NAME = "ipl"
-
-
-def load_csv_to_db(csv_path="ipl.csv"):
-    print("📥 Loading IPL CSV into database...")
-    df = pd.read_csv(csv_path)
+def load_csv_to_db():
+    """
+    Loads local ipl.csv into SQLite database.
+    """
     conn = sqlite3.connect(DB_NAME)
-    df.to_sql(TABLE_NAME, conn, if_exists="replace", index=False)
+    print("Loading IPL CSV into database...")
+    df = pd.read_csv("ipl.csv", low_memory=False)
+    df.to_sql("ipl", conn, if_exists="replace", index=False)
     conn.close()
-    print("✅ Database ready.")
-
-
-def get_schema():
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-    cursor.execute(f"PRAGMA table_info({TABLE_NAME})")
-    schema = cursor.fetchall()
-    conn.close()
-    return schema
-
-
-def execute_query(query: str):
+    print("Database ready.")
+def execute_query(query):
+    """
+    Executes only SELECT queries safely.
+    """
+    if not query.strip().lower().startswith("select"):
+        raise ValueError("Only SELECT statements are allowed.")
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
     cursor.execute(query)
-    result = cursor.fetchall()
+    results = cursor.fetchall()
     conn.close()
-    return result
+    return results
+def get_schema():
+    """
+    Returns table schema for LLM context.
+    """
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute("PRAGMA table_info(ipl);")
+    schema = cursor.fetchall()
+    conn.close()
+    return schema

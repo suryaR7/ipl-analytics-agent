@@ -1,5 +1,18 @@
-ipl.db
-IPL.csv
+# Environment variables
 .env
-venv/
+
+# Database
+*.db
+
+# Python cache
 __pycache__/
+*.pyc
+
+# Streamlit cache
+.streamlit/
+
+# Data files
+data/*.csv
+
+# Mac
+.DS_Store

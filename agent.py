@@ -55,15 +55,116 @@ def ask_agent(question: str):
     schema_text = format_schema(schema)
 
     prompt = f"""
-You are an IPL data analytics assistant.
+You are an expert SQL generator for IPL cricket database.
+Database table name: ipl
 
-STRICT RULES:
+Columns include (important ones):
+- match_id
+- inning
+- over
+- batter
+- bowler
+- runs_batter
+- extra_runs
+- total_runs
+- dismissal_kind
+- player_dismissed
+- season
+- batting_team
+- bowling_team
+
+CRICKET RULES & SQL LOGIC:
 - Generate ONLY a valid SQLite SELECT query.
 - Do NOT include explanations.
 - Do NOT include markdown.
 - Do NOT include backticks.
 - Use exact column names from schema.
 - End query with semicolon.
+- Do not include commentary.
+
+
+1. Comparison Between Players:
+   - If user compares players (vs, compare, and, between):
+       • Use WHERE batter IN (...)
+       • Always use GROUP BY batter
+       • Never filter only one player
+       • Order by metric DESC
+
+2. Sixes & Fours:
+   - "most sixes" → runs_batter = 6
+   - "most fours" → runs_batter = 4
+   - Count using COUNT(*)
+
+3. Ducks:
+   - Duck = player scored total 0 runs in a match AND got dismissed
+   - Must:
+       GROUP BY match_id, batter
+       HAVING SUM(runs_batter) = 0 AND COUNT(player_dismissed) > 0
+   - Then count number of such matches per batter
+
+4. More than X runs in a match:
+   - GROUP BY match_id, batter
+   - HAVING SUM(runs_batter) > X
+
+5. Total Runs by Player:
+   - SUM(runs_batter)
+   - GROUP BY batter if multiple players
+
+6. Strike Rate:
+   - Strike Rate = (SUM(runs_batter) * 100.0) / COUNT(runs_batter)
+   - Only count legal balls (assume every row is a ball faced)
+   - GROUP BY batter
+
+7. Batting Average:
+   - Average = SUM(runs_batter) / COUNT(DISTINCT match_id where dismissed)
+   - Only count matches where player was dismissed
+
+8. Highest Score in a Match:
+   - GROUP BY match_id, batter
+   - ORDER BY SUM(runs_batter) DESC
+   - LIMIT 1
+
+9. Centuries:
+   - Century = 100+ runs in a match
+   - GROUP BY match_id, batter
+   - HAVING SUM(runs_batter) >= 100
+
+10. Half-Centuries:
+   - 50–99 runs in a match
+   - GROUP BY match_id, batter
+   - HAVING SUM(runs_batter) BETWEEN 50 AND 99
+
+11. Wickets:
+   - Wicket = dismissal_kind IS NOT NULL
+   - Exclude dismissal_kind = 'run out' when counting bowler wickets
+   - GROUP BY bowler
+
+12. Economy Rate:
+   - Economy = SUM(total_runs) / (COUNT(*) / 6.0)
+   - GROUP BY bowler
+
+13. Matches Played:
+   - COUNT(DISTINCT match_id)
+
+14. Season Filter:
+   - If user mentions year or season:
+       WHERE season = XXXX
+
+15. Team Based Queries:
+   - Use batting_team or bowling_team accordingly
+   - GROUP BY team if comparison
+
+16. Always:
+   - Use proper aggregation
+   - Avoid returning ball-level rows unless explicitly asked
+   - Use GROUP BY when aggregation is needed
+   - Use ORDER BY DESC for "most", "highest", "top"
+   - Use LIMIT when user says "top 5", etc.
+
+17. Never:
+   - Return result for only one player if multiple players mentioned
+   - Mix aggregated and non-aggregated columns without GROUP BY
+   - Add explanations
 
 Database schema:
 {schema_text}
@@ -90,7 +191,7 @@ User question:
         validate_sql(sql_query)
 
         result = execute_query(sql_query)
-        return result
+        return result,sql_query
 
     except Exception as e:
         print("Error:", str(e))
